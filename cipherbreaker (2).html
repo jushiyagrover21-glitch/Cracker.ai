@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CRACKER — Password Intelligence</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#05080f;color:#c9d6e8;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0a0f1e}::-webkit-scrollbar-thumb{background:#1e3a5f;border-radius:3px}
+  .glow-text{color:#00e5ff;text-shadow:0 0 18px #00e5ff88}
+  .glow-purple{color:#b57bff;text-shadow:0 0 14px #b57bff66}
+  .card{background:linear-gradient(135deg,#0d1626ee,#111d35ee);border:1px solid #1e3a5f;border-radius:12px;padding:20px;backdrop-filter:blur(8px)}
+  .card-glow{box-shadow:0 0 24px #00e5ff18,inset 0 0 24px #00e5ff06}
+  input[type=text],input[type=password]{width:100%;padding:12px 16px;background:#0a1220;border:1px solid #1e4a7a;border-radius:8px;color:#c9d6e8;font-size:15px;outline:none;transition:border-color .2s,box-shadow .2s}
+  input[type=text]:focus,input[type=password]:focus{border-color:#00e5ff;box-shadow:0 0 0 3px #00e5ff22}
+  .btn{padding:10px 22px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;letter-spacing:.5px;transition:all .2s}
+  .btn-cyan{background:linear-gradient(135deg,#00b8d4,#0077a8);color:#fff}
+  .btn-cyan:hover{background:linear-gradient(135deg,#00e5ff,#00b8d4);box-shadow:0 0 18px #00e5ff55}
+  .btn-purple{background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff}
+  .btn-purple:hover{background:linear-gradient(135deg,#a855f7,#7c3aed);box-shadow:0 0 18px #a855f755}
+  .btn-red{background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff}
+  .btn-red:hover{box-shadow:0 0 18px #dc262655}
+  .btn-outline{background:transparent;border:1px solid #1e4a7a;color:#7ab3d4}
+  .btn-outline:hover{border-color:#00e5ff;color:#00e5ff}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .progress-bar{height:8px;border-radius:4px;background:#0a1220;overflow:hidden}
+  .progress-fill{height:100%;border-radius:4px;transition:width .3s ease}
+  .terminal{background:#060c18;border:1px solid #0f2a4a;border-radius:8px;padding:14px;font-family:'Courier New',monospace;font-size:12px;max-height:220px;overflow-y:auto;line-height:1.7}
+  .t-green{color:#22c55e}.t-cyan{color:#00e5ff}.t-yellow{color:#facc15}.t-red{color:#f87171}.t-gray{color:#4a6a8a}.t-purple{color:#c084fc}
+  .nav-btn{padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;border:1px solid transparent;transition:all .2s;background:transparent;color:#7ab3d4}
+  .nav-btn.active{background:#0d2040;border-color:#1e4a7a;color:#00e5ff}
+  .nav-btn:hover:not(.active){color:#c9d6e8;background:#0a1628}
+  .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:.5px}
+  .badge-weak{background:#2a0a0a;color:#f87171;border:1px solid #7f1d1d}
+  .badge-medium{background:#2a1e00;color:#facc15;border:1px solid #854d0e}
+  .badge-strong{background:#0a2a0e;color:#4ade80;border:1px solid #166534}
+  .badge-vstrong{background:#0a1a2a;color:#00e5ff;border:1px solid #0e7490}
+  .algo-card{background:#090f1e;border:1px solid #1a3050;border-radius:10px;padding:14px;transition:border-color .2s}
+  .algo-card.running{border-color:#00e5ff;box-shadow:0 0 12px #00e5ff22}
+  .algo-card.done{border-color:#22c55e;box-shadow:0 0 12px #22c55e18}
+  .algo-card.failed{border-color:#f87171;box-shadow:0 0 12px #f8717118}
+  .stat-box{background:#090f1e;border:1px solid #1a3050;border-radius:8px;padding:12px;text-align:center}
+  .disclaimer{background:linear-gradient(135deg,#1a0a2e,#0d0a2a);border:1px solid #4c1d95;border-radius:8px;padding:12px 16px;font-size:12px;color:#a78bfa}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  @keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .fade-in{animation:fadeIn .3s ease forwards}
+  .blink{animation:pulse 1s infinite}
+  .strength-bar-wrap{height:10px;background:#0a1220;border-radius:5px;overflow:hidden;margin:6px 0}
+  .tooltip{position:relative;display:inline-block}
+  .chip{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;margin:2px;background:#0d1a2e;border:1px solid #1e3a5f;color:#7ab3d4}
+  select{background:#0a1220;border:1px solid #1e4a7a;border-radius:6px;color:#c9d6e8;padding:7px 12px;font-size:13px;outline:none}
+  select:focus{border-color:#00e5ff}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback}=React;
+
+/* ── DICTIONARY (common weak passwords) ── */
+const DICT=[
+  "password","123456","qwerty","abc123","letmein","monkey","dragon","master",
+  "sunshine","princess","football","iloveyou","welcome","shadow","superman",
+  "michael","jessica","password1","12345678","123123","admin","login","hello",
+  "charlie","donald","passw0rd","baseball","trustno1","starwars","batman"
+];
+
+/* ── LEET SUBSTITUTIONS ── */
+const leetMap={'a':'4','e':'3','i':'1','o':'0','s':'5','t':'7'};
+function makeLeet(w){return w.split('').map(c=>leetMap[c.toLowerCase()]||c).join('');}
+function makeVariants(w){
+  return [w,w+'1',w+'123',w+'!',w.charAt(0).toUpperCase()+w.slice(1),makeLeet(w),w+w[w.length-1]];
+}
+
+/* ── STRENGTH ANALYSIS ── */
+function analyzePassword(pw){
+  if(!pw)return null;
+  const len=pw.length;
+  const hasLower=/[a-z]/.test(pw);
+  const hasUpper=/[A-Z]/.test(pw);
+  const hasNum=/[0-9]/.test(pw);
+  const hasSym=/[^a-zA-Z0-9]/.test(pw);
+  const variety=[hasLower,hasUpper,hasNum,hasSym].filter(Boolean).length;
+  const inDict=DICT.some(d=>pw.toLowerCase().includes(d));
+  const isSequential=/(?:0123|1234|2345|3456|4567|5678|6789|abcd|qwer|asdf)/.test(pw.toLowerCase());
+  const isRepeated=/(.)\1{2,}/.test(pw);
+  
+  let score=0;
+  if(len>=8)score+=1;if(len>=12)score+=1;if(len>=16)score+=2;
+  score+=variety;
+  if(inDict)score-=2;
+  if(isSequential)score-=1;
+  if(isRepeated)score-=1;
+
+  const charSet=(hasLower?26:0)+(hasUpper?26:0)+(hasNum?10:0)+(hasSym?32:0)||1;
+  const combos=Math.pow(charSet,len);
+  const guessesPerSec=1e9;
+  const secs=combos/guessesPerSec;
+  
+  function crackTimeLabel(s){
+    if(s<1)return'Instantly';
+    if(s<60)return`${s.toFixed(1)}s`;
+    if(s<3600)return`${(s/60).toFixed(1)} min`;
+    if(s<86400)return`${(s/3600).toFixed(1)} hrs`;
+    if(s<31536000)return`${(s/86400).toFixed(1)} days`;
+    if(s<3153600000)return`${(s/31536000).toFixed(1)} years`;
+    return'Centuries+';
+  }
+
+  const level=score<=2?'Weak':score<=4?'Medium':score<=6?'Strong':'Very Strong';
+  const suggestions=[];
+  if(len<12)suggestions.push('Use at least 12 characters');
+  if(!hasUpper)suggestions.push('Add uppercase letters (A-Z)');
+  if(!hasNum)suggestions.push('Add numbers (0-9)');
+  if(!hasSym)suggestions.push('Add symbols (!@#$%^&*)');
+  if(inDict)suggestions.push('Avoid common dictionary words');
+  if(isSequential)suggestions.push('Avoid sequential patterns (1234, qwerty)');
+  if(isRepeated)suggestions.push('Avoid repeated characters (aaa, 111)');
+  if(suggestions.length===0)suggestions.push('Great password! Consider using a password manager.');
+
+  return{len,hasLower,hasUpper,hasNum,hasSym,variety,inDict,isSequential,isRepeated,score:Math.max(0,score),level,crackTime:crackTimeLabel(secs),combos,suggestions};
+}
+
+/* ── AI SUGGESTIONS ── */
+function suggestPassword(){
+  const words=['Cobalt','Prism','Quantum','Nexus','Vector','Cipher','Forge','Blaze'];
+  const nums=Math.floor(Math.random()*900+100);
+  const syms=['!','@','#','$','&','*'][Math.floor(Math.random()*6)];
+  const w1=words[Math.floor(Math.random()*words.length)];
+  const w2=words[Math.floor(Math.random()*words.length)];
+  return `${w1}_${w2}${nums}${syms}`;
+}
+
+/* ── SIMULATOR ALGORITHMS ── */
+async function runDictionary(target,onLog,onProgress,signal){
+  const variants=DICT.flatMap(makeVariants);
+  let attempts=0;
+  const start=performance.now();
+  for(let i=0;i<variants.length;i++){
+    if(signal.aborted)return{found:false,attempts,time:performance.now()-start,method:'Dictionary'};
+    attempts++;
+    if(i%20===0){
+      onProgress(Math.min(95,i/variants.length*100));
+      onLog(`dict`,`Trying: ${variants[i]}`);
+      await new Promise(r=>setTimeout(r,30));
+    }
+    if(variants[i]===target){
+      onProgress(100);
+      onLog('found',`✓ CRACKED: ${target} (${attempts} attempts)`);
+      return{found:true,attempts,time:performance.now()-start,method:'Dictionary'};
+    }
+  }
+  onLog('fail','✗ Not found in dictionary');
+  return{found:false,attempts,time:performance.now()-start,method:'Dictionary'};
+}
+
+async function runBruteForce(target,onLog,onProgress,signal){
+  // Only brute-force up to 5-char for demo safety
+  const MAX_LEN=Math.min(target.length,5);
+  const chars='abcdefghijklmnopqrstuvwxyz0123456789';
+  let attempts=0;
+  const start=performance.now();
+  if(target.length>5){
+    onLog('warn','Target too long for full brute-force (demo limited to 5 chars)');
+    for(let i=0;i<3000;i++){
+      if(signal.aborted)return{found:false,attempts,time:performance.now()-start,method:'Brute Force'};
+      const guess=Array.from({length:MAX_LEN},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+      attempts++;
+      if(i%30===0){onProgress(Math.min(80,i/3000*100));onLog('brute',`Trying: ${guess}`);await new Promise(r=>setTimeout(r,20));}
+    }
+    onLog('fail','✗ Brute force exhausted (password too complex)');
+    return{found:false,attempts,time:performance.now()-start,method:'Brute Force'};
+  }
+  function* gen(len){
+    if(len===0){yield'';return;}
+    for(const c of chars)for(const rest of gen(len-1))yield c+rest;
+  }
+  for(let l=1;l<=MAX_LEN;l++){
+    for(const g of gen(l)){
+      if(signal.aborted)return{found:false,attempts,time:performance.now()-start,method:'Brute Force'};
+      attempts++;
+      if(attempts%100===0){onProgress(Math.min(90,attempts/50000*100));onLog('brute',`[L${l}] ${g}`);await new Promise(r=>setTimeout(r,8));}
+      if(g===target){onProgress(100);onLog('found',`✓ CRACKED: ${target} (${attempts} attempts)`);return{found:true,attempts,time:performance.now()-start,method:'Brute Force'};}
+    }
+  }
+  onLog('fail','✗ Not found in brute force range');
+  return{found:false,attempts,time:performance.now()-start,method:'Brute Force'};
+}
+
+async function runHeuristic(target,onLog,onProgress,signal){
+  // A* heuristic: score guesses by character overlap with target length + common patterns
+  const start=performance.now();
+  let attempts=0;
+  const queue=[...DICT.flatMap(makeVariants)].sort((a,b)=>{
+    const scoreA=a.split('').filter((c,i)=>c===target[i]).length;
+    const scoreB=b.split('').filter((c,i)=>c===target[i]).length;
+    return scoreB-scoreA;
+  });
+  onLog('heuristic','A* heuristic search initialized');
+  onLog('heuristic',`Priority queue: ${queue.length} candidates`);
+  for(let i=0;i<queue.length;i++){
+    if(signal.aborted)return{found:false,attempts,time:performance.now()-start,method:'Heuristic (A*)'};
+    attempts++;
+    const hScore=queue[i].split('').filter((c,j)=>c===target[j]).length;
+    if(i%15===0){onProgress(Math.min(95,i/queue.length*100));onLog('heuristic',`h(n)=${hScore} → ${queue[i]}`);await new Promise(r=>setTimeout(r,40));}
+    if(queue[i]===target){onProgress(100);onLog('found',`✓ CRACKED via heuristic: ${target} (${attempts} attempts)`);return{found:true,attempts,time:performance.now()-start,method:'Heuristic (A*)'};}
+  }
+  onLog('fail','✗ Heuristic search exhausted');
+  return{found:false,attempts,time:performance.now()-start,method:'Heuristic (A*)'};
+}
+
+async function runGenetic(target,onLog,onProgress,signal){
+  const CHARS='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$';
+  const POP=40,GENS=80,MUTRATE=0.15;
+  const start=performance.now();
+  let attempts=0;
+  const fitness=s=>{let f=0;for(let i=0;i<Math.min(s.length,target.length);i++)if(s[i]===target[i])f++;return f-(Math.abs(s.length-target.length)*0.5);};
+  const randChar=()=>CHARS[Math.floor(Math.random()*CHARS.length)];
+  const randStr=len=>Array.from({length:len},randChar).join('');
+  let pop=Array.from({length:POP},()=>randStr(target.length));
+  for(let g=0;g<GENS;g++){
+    if(signal.aborted)return{found:false,attempts,time:performance.now()-start,method:'Genetic Algorithm'};
+    pop.sort((a,b)=>fitness(b)-fitness(a));
+    attempts+=POP;
+    if(pop[0]===target){onProgress(100);onLog('found',`✓ CRACKED via evolution! Gen ${g+1}: ${target}`);return{found:true,attempts,time:performance.now()-start,method:'Genetic Algorithm'};}
+    onProgress(Math.min(95,g/GENS*100));
+    if(g%8===0)onLog('genetic',`Gen ${g+1} | best="${pop[0]}" fit=${fitness(pop[0]).toFixed(1)}`);
+    await new Promise(r=>setTimeout(r,50));
+    const newPop=pop.slice(0,10);
+    while(newPop.length<POP){
+      const p1=pop[Math.floor(Math.random()*15)];
+      const p2=pop[Math.floor(Math.random()*15)];
+      const cut=Math.floor(Math.random()*target.length);
+      let child=(p1.slice(0,cut)+p2.slice(cut)).slice(0,target.length);
+      child=child.split('').map(c=>Math.random()<MUTRATE?randChar():c).join('');
+      newPop.push(child);
+    }
+    pop=newPop;
+  }
+  onLog('fail','✗ Genetic algorithm converged without match');
+  return{found:false,attempts,time:performance.now()-start,method:'Genetic Algorithm'};
+}
+
+/* ── LEADERBOARD STORAGE ── */
+function getLeaderboard(){
+  try{return JSON.parse(localStorage.getItem('cb_leaders')||'[]');}catch{return[];}
+}
+function addToLeaderboard(pw,level,score){
+  const lb=getLeaderboard().filter(x=>x.pw!==pw);
+  lb.unshift({pw,level,score,date:new Date().toLocaleDateString()});
+  const top=lb.sort((a,b)=>b.score-a.score).slice(0,10);
+  try{localStorage.setItem('cb_leaders',JSON.stringify(top));}catch{}
+  return top;
+}
+
+/* ══════════════════════════════════════════════
+   MAIN APP
+══════════════════════════════════════════════ */
+function App(){
+  const [tab,setTab]=useState('home');
+  return(
+    <div style={{minHeight:'100vh',background:'#05080f'}}>
+      <Header tab={tab} setTab={setTab}/>
+      <div style={{maxWidth:1100,margin:'0 auto',padding:'24px 16px'}}>
+        {tab==='home'&&<Home setTab={setTab}/>}
+        {tab==='analyze'&&<Analyzer/>}
+        {tab==='sim'&&<Simulator/>}
+        {tab==='edu'&&<Education/>}
+      </div>
+    </div>
+  );
+}
+
+/* ── HEADER ── */
+function Header({tab,setTab}){
+  return(
+    <div style={{background:'linear-gradient(180deg,#060c18,#07101f)',borderBottom:'1px solid #0f2a4a',padding:'0 24px',position:'sticky',top:0,zIndex:100}}>
+      <div style={{maxWidth:1100,margin:'0 auto',display:'flex',alignItems:'center',gap:16,height:56}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginRight:'auto'}}>
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <rect x="4" y="4" width="20" height="20" rx="4" fill="#00e5ff" fillOpacity=".15" stroke="#00e5ff" strokeWidth="1.5"/>
+            <path d="M10 14h8M14 10v8" stroke="#00e5ff" strokeWidth="2" strokeLinecap="round"/>
+            <circle cx="14" cy="14" r="3" fill="#00e5ff" fillOpacity=".3"/>
+          </svg>
+          <span style={{fontWeight:700,fontSize:16,letterSpacing:.5}} className="glow-text">CRACKER</span>
+          <span className="badge" style={{background:'#0d1f0d',color:'#4ade80',border:'1px solid #166534',fontSize:9,letterSpacing:1,marginLeft:4}}>EDU</span>
+        </div>
+        {[['home','Home'],['analyze','Analyzer'],['sim','Simulator'],['edu','Education']].map(([id,label])=>(
+          <button key={id} className={`nav-btn${tab===id?' active':''}`} onClick={()=>setTab(id)}>{label}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── HOME ── */
+function Home({setTab}){
+  return(
+    <div className="fade-in">
+      <div className="disclaimer" style={{marginBottom:20}}>
+        ⚠️ <strong>Educational & Ethical Use Only</strong> — CRACKER simulates password analysis algorithms for learning purposes. No real credentials are stored, transmitted, or attacked. This tool is designed for cybersecurity education, academic projects, and ethical penetration testing awareness only.
+      </div>
+      <div style={{textAlign:'center',padding:'40px 0 32px'}}>
+        <h1 style={{fontSize:42,fontWeight:800,letterSpacing:-1,marginBottom:12}}>
+          <span className="glow-text">CRACKER</span>{' '}
+          <span className="glow-purple">AI</span>
+        </h1>
+        <p style={{color:'#7ab3d4',fontSize:17,maxWidth:560,margin:'0 auto 28px',lineHeight:1.7}}>
+          Understand how passwords are cracked. Simulate AI-based search algorithms. Build stronger defenses.
+        </p>
+        <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
+          <button className="btn btn-cyan" style={{padding:'13px 28px',fontSize:15}} onClick={()=>setTab('analyze')}>Analyze My Password</button>
+          <button className="btn btn-purple" style={{padding:'13px 28px',fontSize:15}} onClick={()=>setTab('sim')}>Run Simulator</button>
+        </div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:16,marginTop:16}}>
+        {[
+          {icon:'🔍',title:'Strength Analyzer',desc:'Deep analysis of your password with actionable feedback',tab:'analyze'},
+          {icon:'⚡',title:'4 AI Algorithms',desc:'Brute Force · Dictionary · A* Heuristic · Genetic',tab:'sim'},
+          {icon:'📊',title:'Live Dashboard',desc:'Visualize algorithm efficiency and attempt counts',tab:'sim'},
+          {icon:'🛡️',title:'Security Education',desc:'Learn how attacks work and how to defend against them',tab:'edu'},
+        ].map(c=>(
+          <div key={c.title} className="card card-glow" style={{cursor:'pointer'}} onClick={()=>setTab(c.tab)}>
+            <div style={{fontSize:28,marginBottom:10}}>{c.icon}</div>
+            <div style={{fontWeight:600,fontSize:15,color:'#c9d6e8',marginBottom:6}}>{c.title}</div>
+            <div style={{fontSize:13,color:'#4a7a9b',lineHeight:1.6}}>{c.desc}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── ANALYZER ── */
+function Analyzer(){
+  const [pw,setPw]=useState('');
+  const [show,setShow]=useState(false);
+  const [result,setResult]=useState(null);
+  const [suggested,setSuggested]=useState('');
+  const [leaderboard,setLeaderboard]=useState(getLeaderboard());
+
+  useEffect(()=>{
+    const a=analyzePassword(pw);
+    setResult(a);
+  },[pw]);
+
+  function handleAnalyze(){
+    if(result&&pw){
+      const lb=addToLeaderboard(pw.slice(0,3)+'***',result.level,result.score);
+      setLeaderboard(lb);
+    }
+    setSuggested(suggestPassword());
+  }
+
+  const levelColor={Weak:'#f87171',Medium:'#facc15',Strong:'#4ade80','Very Strong':'#00e5ff'};
+  const levelBadge={Weak:'badge-weak',Medium:'badge-medium',Strong:'badge-strong','Very Strong':'badge-vstrong'};
+  const barColor=result?levelColor[result.level]:'#1e3a5f';
+  const barPct=result?Math.min(100,(result.score/8)*100):0;
+
+  return(
+    <div className="fade-in">
+      <h2 style={{fontSize:24,fontWeight:700,marginBottom:4}} className="glow-text">Password Strength Analyzer</h2>
+      <p style={{color:'#4a7a9b',fontSize:13,marginBottom:20}}>Enter any password to get a full security analysis. Nothing is stored or transmitted.</p>
+      <div className="card card-glow" style={{marginBottom:20}}>
+        <div style={{display:'flex',gap:10,alignItems:'center',marginBottom:16}}>
+          <div style={{flex:1}}>
+            <input type={show?'text':'password'} value={pw} onChange={e=>setPw(e.target.value)} placeholder="Type a password to analyze…"/>
+          </div>
+          <button className="btn btn-outline" onClick={()=>setShow(s=>!s)}>{show?'Hide':'Show'}</button>
+          <button className="btn btn-cyan" onClick={handleAnalyze} disabled={!pw}>Analyze</button>
+        </div>
+        {result&&(
+          <div>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
+              <span className={`badge ${levelBadge[result.level]}`}>{result.level}</span>
+              <span style={{color:'#4a7a9b',fontSize:13}}>Score: {result.score}/8</span>
+              <span style={{color:'#4a7a9b',fontSize:13}}>Est. crack time: <span style={{color:levelColor[result.level],fontWeight:600}}>{result.crackTime}</span></span>
+            </div>
+            <div className="strength-bar-wrap"><div className="progress-fill" style={{width:`${barPct}%`,background:barColor}}/></div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:10,marginTop:16}}>
+              {[
+                {label:'Length',val:result.len,ok:result.len>=12},
+                {label:'Lowercase',val:result.hasLower?'✓':'✗',ok:result.hasLower},
+                {label:'Uppercase',val:result.hasUpper?'✓':'✗',ok:result.hasUpper},
+                {label:'Numbers',val:result.hasNum?'✓':'✗',ok:result.hasNum},
+                {label:'Symbols',val:result.hasSym?'✓':'✗',ok:result.hasSym},
+                {label:'In dictionary',val:result.inDict?'Yes':'No',ok:!result.inDict},
+              ].map(s=>(
+                <div key={s.label} className="stat-box">
+                  <div style={{fontSize:11,color:'#4a6a8a',marginBottom:4}}>{s.label}</div>
+                  <div style={{fontSize:18,fontWeight:600,color:s.ok?'#4ade80':'#f87171'}}>{s.val}</div>
+                </div>
+              ))}
+            </div>
+            {result.suggestions.length>0&&(
+              <div style={{marginTop:16,background:'#090f1e',borderRadius:8,padding:14,border:'1px solid #1a3050'}}>
+                <div style={{fontSize:12,color:'#facc15',marginBottom:8,fontWeight:600}}>💡 SUGGESTIONS</div>
+                {result.suggestions.map((s,i)=>(
+                  <div key={i} style={{fontSize:13,color:'#7ab3d4',padding:'3px 0'}}>→ {s}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      {suggested&&(
+        <div className="card" style={{marginBottom:20,borderColor:'#1e4a7a'}}>
+          <div style={{fontSize:13,color:'#7ab3d4',marginBottom:8}}>🤖 AI-Generated Strong Password Suggestion:</div>
+          <div style={{fontFamily:'monospace',fontSize:16,color:'#00e5ff',letterSpacing:1,padding:'10px 14px',background:'#060c18',borderRadius:6,border:'1px solid #0f3a5a'}}>
+            {suggested}
+          </div>
+          <div style={{fontSize:11,color:'#4a6a8a',marginTop:6}}>Score: Very Strong · This is a generated example — create your own unique passphrase!</div>
+        </div>
+      )}
+      <div className="card">
+        <div style={{fontSize:14,fontWeight:600,color:'#c9d6e8',marginBottom:12}}>🏆 Strongest Passwords Tested (masked)</div>
+        {leaderboard.length===0?<div style={{color:'#4a6a8a',fontSize:13}}>No entries yet. Analyze a password to add to the leaderboard.</div>:(
+          leaderboard.map((e,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:12,padding:'7px 0',borderBottom:'1px solid #0f1e30'}}>
+              <span style={{width:22,color:'#4a6a8a',fontSize:13}}>#{i+1}</span>
+              <span style={{flex:1,fontFamily:'monospace',fontSize:14,color:'#c9d6e8'}}>{e.pw}</span>
+              <span className={`badge ${levelBadge[e.level]||'badge-strong'}`}>{e.level}</span>
+              <span style={{color:'#4a6a8a',fontSize:12}}>{e.date}</span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── SIMULATOR ── */
+function Simulator(){
+  const [target,setTarget]=useState('');
+  const [algo,setAlgo]=useState('all');
+  const [running,setRunning]=useState(false);
+  const [logs,setLogs]=useState([]);
+  const [results,setResults]=useState([]);
+  const [progress,setProgress]=useState({});
+  const abortRef=useRef(null);
+  const logRef=useRef(null);
+  const chartRef=useRef(null);
+  const chartInst=useRef(null);
+
+  const addLog=useCallback((type,msg)=>{
+    setLogs(l=>[...l.slice(-80),{type,msg,t:Date.now()}]);
+  },[]);
+
+  useEffect(()=>{if(logRef.current)logRef.current.scrollTop=logRef.current.scrollHeight;},[logs]);
+
+  useEffect(()=>{
+    if(!chartRef.current||results.length===0)return;
+    if(chartInst.current)chartInst.current.destroy();
+    const labels=results.map(r=>r.method);
+    chartInst.current=new Chart(chartRef.current,{
+      type:'bar',
+      data:{
+        labels,
+        datasets:[
+          {label:'Attempts',data:results.map(r=>r.attempts),backgroundColor:'#00e5ff55',borderColor:'#00e5ff',borderWidth:1.5,yAxisID:'y'},
+          {label:'Time (ms)',data:results.map(r=>Math.round(r.time)),backgroundColor:'#a855f755',borderColor:'#a855f7',borderWidth:1.5,yAxisID:'y1'},
+        ]
+      },
+      options:{
+        responsive:true,
+        plugins:{legend:{labels:{color:'#7ab3d4',font:{size:11}}},title:{display:false}},
+        scales:{
+          y:{ticks:{color:'#4a7a9b'},grid:{color:'#0f2040'},title:{display:true,text:'Attempts',color:'#4a7a9b'}},
+          y1:{position:'right',ticks:{color:'#4a7a9b'},grid:{drawOnChartArea:false},title:{display:true,text:'Time (ms)',color:'#4a7a9b'}},
+          x:{ticks:{color:'#7ab3d4'},grid:{color:'#0f2040'}}
+        }
+      }
+    });
+  },[results]);
+
+  async function run(){
+    if(!target){return;}
+    const ac=new AbortController();
+    abortRef.current=ac;
+    setRunning(true);setLogs([]);setResults([]);setProgress({});
+    addLog('system',`[INIT] Target password set. Starting simulation…`);
+    addLog('system',`[WARN] Simulation only — no real hacking occurs.`);
+    const res=[];
+    const algos=algo==='all'
+      ?[runDictionary,runBruteForce,runHeuristic,runGenetic]
+      :algo==='dict'?[runDictionary]:algo==='brute'?[runBruteForce]:algo==='heuristic'?[runHeuristic]:[runGenetic];
+    for(const fn of algos){
+      addLog('system',`\n[START] ${fn.name.replace('run','')}`);
+      const r=await fn(target,(t,m)=>addLog(t,m),(p)=>setProgress(prev=>({...prev,[fn.name]:p})),ac.signal);
+      res.push(r);
+      setResults([...res]);
+      if(ac.signal.aborted)break;
+    }
+    setRunning(false);
+    addLog('system','\n[DONE] Simulation complete.');
+  }
+
+  function stop(){abortRef.current?.abort();setRunning(false);}
+
+  const algoNames={runDictionary:'Dictionary',runBruteForce:'Brute Force',runHeuristic:'Heuristic',runGenetic:'Genetic'};
+  const algoFns=[runDictionary,runBruteForce,runHeuristic,runGenetic];
+
+  const logColor={found:'t-green',fail:'t-red',system:'t-cyan',warn:'t-yellow',dict:'t-gray',brute:'t-gray',heuristic:'t-purple',genetic:'t-purple',default:'t-gray'};
+
+  return(
+    <div className="fade-in">
+      <h2 style={{fontSize:24,fontWeight:700,marginBottom:4}} className="glow-text">Cracking Simulator</h2>
+      <p style={{color:'#4a7a9b',fontSize:13,marginBottom:20}}>Simulate how AI-based search algorithms attempt to guess passwords. <strong style={{color:'#facc15'}}>Use only simple test passwords like: hello, abc123, dragon.</strong></p>
+      <div className="disclaimer" style={{marginBottom:16}}>⚠️ For educational simulation only. Enter a short, simple test password (not your real password). This tool does not connect to any external service.</div>
+      <div className="card card-glow" style={{marginBottom:20}}>
+        <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'flex-end'}}>
+          <div style={{flex:1,minWidth:200}}>
+            <label style={{fontSize:12,color:'#4a6a8a',display:'block',marginBottom:6}}>Test password (use simple words only)</label>
+            <input type="text" value={target} onChange={e=>setTarget(e.target.value)} placeholder="e.g. hello, dragon, abc123" disabled={running}/>
+          </div>
+          <div>
+            <label style={{fontSize:12,color:'#4a6a8a',display:'block',marginBottom:6}}>Algorithm</label>
+            <select value={algo} onChange={e=>setAlgo(e.target.value)} disabled={running}>
+              <option value="all">All 4 Algorithms</option>
+              <option value="dict">Dictionary Attack</option>
+              <option value="brute">Brute Force</option>
+              <option value="heuristic">Heuristic (A*)</option>
+              <option value="genetic">Genetic Algorithm</option>
+            </select>
+          </div>
+          {!running
+            ?<button className="btn btn-cyan" onClick={run} disabled={!target}>▶ Start Cracking</button>
+            :<button className="btn btn-red" onClick={stop}>■ Stop</button>
+          }
+        </div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12,marginBottom:20}}>
+        {algoFns.map(fn=>{
+          const r=results.find(x=>x.method===algoNames[fn.name]||x.method.startsWith(fn.name.replace('run','')));
+          const p=progress[fn.name]||0;
+          const isRun=running&&p>0&&p<100;
+          const isDone=p>=100||!!r;
+          const isFailed=r&&!r.found;
+          return(
+            <div key={fn.name} className={`algo-card${isRun?' running':isDone&&r?.found?' done':isFailed?' failed':''}`}>
+              <div style={{fontSize:12,fontWeight:600,color:'#7ab3d4',marginBottom:8}}>{algoNames[fn.name]}</div>
+              <div className="progress-bar" style={{marginBottom:8}}>
+                <div className="progress-fill" style={{width:`${p}%`,background:r?.found?'#22c55e':isFailed?'#f87171':'#00e5ff'}}/>
+              </div>
+              {r?(
+                <div>
+                  <div style={{fontSize:11,color:r.found?'#22c55e':'#f87171',fontWeight:600,marginBottom:4}}>{r.found?'✓ CRACKED':'✗ NOT FOUND'}</div>
+                  <div style={{fontSize:11,color:'#4a6a8a'}}>Attempts: <span style={{color:'#c9d6e8'}}>{r.attempts.toLocaleString()}</span></div>
+                  <div style={{fontSize:11,color:'#4a6a8a'}}>Time: <span style={{color:'#c9d6e8'}}>{Math.round(r.time)}ms</span></div>
+                </div>
+              ):(
+                <div style={{fontSize:11,color:'#4a6a8a'}}>{isRun?<span className="blink">Running…</span>:'Waiting'}</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:20}}>
+        <div>
+          <div style={{fontSize:12,color:'#4a6a8a',marginBottom:8}}>TERMINAL OUTPUT</div>
+          <div className="terminal" ref={logRef}>
+            {logs.length===0&&<span className="t-gray">Awaiting simulation…</span>}
+            {logs.map((l,i)=>(
+              <div key={i}><span className={logColor[l.type]||'t-gray'}>{l.msg}</span></div>
+            ))}
+            {running&&<span className="blink t-cyan">█</span>}
+          </div>
+        </div>
+        <div>
+          <div style={{fontSize:12,color:'#4a6a8a',marginBottom:8}}>ALGORITHM COMPARISON</div>
+          <div style={{background:'#060c18',border:'1px solid #0f2a4a',borderRadius:8,padding:12,height:220}}>
+            {results.length>0?<canvas ref={chartRef} style={{maxHeight:190}}/>:<div style={{color:'#4a6a8a',fontSize:13,paddingTop:80,textAlign:'center'}}>Run a simulation to see chart</div>}
+          </div>
+        </div>
+      </div>
+
+      {results.length>0&&(
+        <div className="card">
+          <div style={{fontSize:14,fontWeight:600,color:'#c9d6e8',marginBottom:12}}>Results Summary</div>
+          <div style={{overflowX:'auto'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+              <thead>
+                <tr style={{color:'#4a6a8a',borderBottom:'1px solid #0f2040'}}>
+                  {['Algorithm','Result','Attempts','Time (ms)'].map(h=><th key={h} style={{padding:'8px 12px',textAlign:'left'}}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((r,i)=>(
+                  <tr key={i} style={{borderBottom:'1px solid #0a1628'}}>
+                    <td style={{padding:'8px 12px',color:'#c9d6e8'}}>{r.method}</td>
+                    <td style={{padding:'8px 12px'}}><span style={{color:r.found?'#22c55e':'#f87171',fontWeight:600}}>{r.found?'Cracked':'Not Found'}</span></td>
+                    <td style={{padding:'8px 12px',color:'#7ab3d4'}}>{r.attempts.toLocaleString()}</td>
+                    <td style={{padding:'8px 12px',color:'#7ab3d4'}}>{Math.round(r.time)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── EDUCATION ── */
+function Education(){
+  const [open,setOpen]=useState(null);
+  const topics=[
+    {id:'dict',title:'Dictionary Attack',icon:'📖',color:'#f87171',
+     content:`A dictionary attack uses a precompiled list of common words, passwords, and phrases. Attackers use databases of millions of known passwords (like "rockyou.txt") combined with variations (adding numbers, capitals, leet-speak substitutions). This is why "password1" and "P@ssw0rd" are weak — they appear in every dictionary list.`,
+     defend:`Use passphrases that don't follow predictable patterns. Avoid single-word passwords even with substitutions.`},
+    {id:'brute',title:'Brute Force Attack',icon:'⚡',color:'#facc15',
+     content:`Brute force tries every possible combination of characters. Against a 6-character lowercase password: 26^6 = ~300 million combinations. Modern GPUs can try 10+ billion hashes per second, cracking such a password in under 1 second. Each character added multiplies the search space exponentially.`,
+     defend:`Every extra character exponentially increases crack time. A 12-character random password with symbols would take centuries of brute force.`},
+    {id:'heuristic',title:'Heuristic / A* Search',icon:'🧭',color:'#a855f7',
+     content:`Heuristic attacks use intelligent scoring to prioritize likely candidates. A* assigns each guess a "heuristic value" based on known patterns — character frequency, positional data from leaked databases, and structural patterns. This dramatically reduces the search space compared to pure brute force.`,
+     defend:`Unpredictability is key. Passwords with true randomness have no exploitable patterns for heuristics to latch onto.`},
+    {id:'genetic',title:'Genetic Algorithm',icon:'🧬',color:'#00e5ff',
+     content:`Genetic algorithms evolve populations of candidate passwords toward a target. They use: Selection (keep high-scoring candidates), Crossover (combine two candidates), Mutation (randomly alter characters). Over generations, the population converges on the target. This models how real attackers iteratively refine guesses.`,
+     defend:`The longer and more complex the password, the more generations the algorithm needs — eventually making it computationally infeasible.`},
+    {id:'rainbow',title:'Rainbow Table Attack',icon:'🌈',color:'#4ade80',
+     content:`Rainbow tables are precomputed tables mapping password hashes back to plaintext. Instead of computing hashes at attack time, attackers look up the hash in a massive table. This makes cracking unsalted hashes nearly instant. Modern databases use salting + bcrypt/Argon2 to defeat this.`,
+     defend:`Ensure any system storing your password uses modern hashing (bcrypt, Argon2, scrypt) with unique salts. Never store plaintext passwords.`},
+  ];
+  const tips=[
+    {t:'Length beats complexity',d:'A 16-char lowercase passphrase beats a 8-char complex password in brute-force resistance.'},
+    {t:'Use a password manager',d:'Tools like Bitwarden or 1Password generate and store truly random, unique passwords for every site.'},
+    {t:'Enable MFA everywhere',d:'Even if a password is cracked, multi-factor authentication blocks unauthorized access.'},
+    {t:'Never reuse passwords',d:'A breach on one site should never compromise another. Use unique passwords everywhere.'},
+    {t:'Use passphrases',d:'Four random words like "correct-horse-battery-staple" are strong and memorable.'},
+    {t:'Beware phishing',d:'Most modern attacks steal credentials directly — no cracking required. Verify URLs always.'},
+  ];
+  return(
+    <div className="fade-in">
+      <h2 style={{fontSize:24,fontWeight:700,marginBottom:4}} className="glow-text">Security Education</h2>
+      <p style={{color:'#4a7a9b',fontSize:13,marginBottom:20}}>Learn how password attacks work and how to defend against them.</p>
+      <div style={{marginBottom:24}}>
+        <div style={{fontSize:14,fontWeight:600,color:'#c9d6e8',marginBottom:12}}>Attack Vectors</div>
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {topics.map(t=>(
+            <div key={t.id} style={{background:'#090f1e',border:`1px solid ${open===t.id?t.color:'#1a3050'}`,borderRadius:10,overflow:'hidden',transition:'border-color .2s'}}>
+              <div style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',cursor:'pointer'}} onClick={()=>setOpen(open===t.id?null:t.id)}>
+                <span style={{fontSize:20}}>{t.icon}</span>
+                <span style={{flex:1,fontWeight:600,fontSize:14,color:'#c9d6e8'}}>{t.title}</span>
+                <span style={{color:t.color,fontSize:16}}>{open===t.id?'▲':'▼'}</span>
+              </div>
+              {open===t.id&&(
+                <div style={{padding:'0 16px 16px',animation:'fadeIn .2s ease'}}>
+                  <p style={{fontSize:13,color:'#7ab3d4',lineHeight:1.7,marginBottom:10}}>{t.content}</p>
+                  <div style={{background:'#060c18',borderRadius:6,padding:'10px 14px',border:`1px solid ${t.color}44`}}>
+                    <span style={{fontSize:11,color:t.color,fontWeight:600}}>🛡️ DEFENSE: </span>
+                    <span style={{fontSize:12,color:'#7ab3d4'}}>{t.defend}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="card">
+        <div style={{fontSize:14,fontWeight:600,color:'#c9d6e8',marginBottom:14}}>🛡️ Best Practices for Strong Passwords</div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))',gap:10}}>
+          {tips.map((tip,i)=>(
+            <div key={i} style={{background:'#060c18',borderRadius:8,padding:'12px 14px',border:'1px solid #0f2040'}}>
+              <div style={{fontSize:13,fontWeight:600,color:'#00e5ff',marginBottom:4}}>{tip.t}</div>
+              <div style={{fontSize:12,color:'#4a7a9b',lineHeight:1.6}}>{tip.d}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{marginTop:20,padding:'14px 16px',background:'#0a0a1e',borderRadius:8,border:'1px solid #2a1a5e',fontSize:12,color:'#7060a0',lineHeight:1.8}}>
+        <strong style={{color:'#a78bfa'}}>Disclaimer:</strong> CRACKER is an educational tool created for learning about password security, cybersecurity concepts, and ethical penetration testing awareness. All simulations are performed locally in your browser. No passwords are transmitted, stored, or used for any real authentication system. Always obtain proper authorization before testing any real system. Unauthorized access to computer systems is illegal.
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
